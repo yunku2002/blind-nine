@@ -226,7 +226,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6rem;
+  font-size: calc(var(--card-w) / 5.7);
   font-weight: 700;
   letter-spacing: 0.05em;
   background: var(--slot-bg);
@@ -250,6 +250,7 @@ html, body {
    ==================================================== */
 .instructions-area {
   flex: 2 1 0;          /* gets 2× the space of each spacer */
+  container-type: size; /* enables cqh font scaling */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -262,13 +263,13 @@ html, body {
 }
 
 .instr-text {
-  font-size: 0.82rem;
+  font-size: clamp(0.6rem, 14cqh, 0.85rem);
   color: var(--text);
   opacity: 0.85;
 }
 
 .instr-big {
-  font-size: 2.4rem;
+  font-size: clamp(1rem, 40cqh, 2.4rem);
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -277,9 +278,9 @@ html, body {
 .instr-big.win  { color: #2d9e2d; }
 .instr-big.lose { color: #c0392b; }
 .instr-big.draw { color: #888;    }
-.instr-big.game-win  { color: #2d9e2d; }
-.instr-big.game-lose { color: #c0392b; }
-.instr-big.game-draw { color: #888;    }
+.instr-big.game-win  { color: #2d9e2d; font-size: clamp(0.75rem, 22cqh, 1.3rem); }
+.instr-big.game-lose { color: #c0392b; font-size: clamp(0.75rem, 22cqh, 1.3rem); }
+.instr-big.game-draw { color: #888;    font-size: clamp(0.75rem, 22cqh, 1.3rem); }
 
 .instr-confirm {
   display: flex;
@@ -288,7 +289,7 @@ html, body {
   align-items: center;
 }
 .instr-confirm p {
-  font-size: 0.85rem;
+  font-size: clamp(0.65rem, 14cqh, 0.85rem);
   font-weight: 600;
 }
 .instr-confirm .btn-row {
@@ -383,6 +384,7 @@ html, body {
   z-index: 50;
   border-radius: 0;
   transition: background 0.3s;
+  container-type: size; /* gives cqh a definite reference for rules-text */
 }
 .player-overlay.hidden { display: none; }
 
@@ -437,7 +439,7 @@ html, body {
 .rules-text {
   font-size: 0.74rem;
   line-height: 1.55;
-  max-height: 60vh;
+  max-height: calc(70cqh - 6rem); /* 70% of overlay height minus heading + button + padding */
   overflow-y: auto;
   padding-right: 0.2rem;
   color: var(--text);
@@ -476,7 +478,7 @@ html, body {
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.5rem;
   flex-shrink: 0;
 }
 .score-bar .score-red  { color: var(--red);  }

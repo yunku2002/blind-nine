@@ -61,6 +61,7 @@ While waiting for the opponent to play, the instruction says "Waiting for [color
 When playing a card, the instruction says "Select a card to play."
 When a card is selected, check for confirmation showing "Play [number]?" with Yes / No.
 Instead of the two options, another card may be selected instead at this point, modifying the prompt.
+Confirmation can be skipped by double-pressing the card.
 Only when Yes is pressed should the card move to the play area, face up or down according to Show My Played Cards.
 For the opponent, the card just shows up face down.
 Then there should be a 3-second countdown, with the instructions showing "3", "2", "1".

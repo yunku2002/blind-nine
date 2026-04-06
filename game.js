@@ -37,7 +37,7 @@ const RULES_HTML = `
 <p><b>Setup:</b> Place a physical barrier in the middle to hide each player's cards from their opponent.</p>
 <p><b>Cards:</b> Each player receives number cards 1–9. The back of each card shows "EVEN" or "odd", informing the opponent of its parity.</p>
 <p><b>Winning:</b> The first to win 5 rounds wins the game. If all 9 rounds are played, the player with more wins wins; if equal, the game is a draw.</p>
-<p><b>Playing a round:</b> Players take turns playing one card face-down to the play area. The higher card wins. Exception: 1 beats 9 (unless disabled in options).</p>
+<p><b>Playing a round:</b> Players take turns playing one card face-down to the play area. The higher card wins. Exception: 1 beats 9 (unless disabled in options). Press a card once to select it and confirm, or press it twice to play immediately.</p>
 <p><b>Turn order:</b> The winner of the previous round plays first next round. After a tie, the previous first player goes first again.</p>
 <p><b>Results:</b> Round results are announced after each round. Opponents' played cards are only revealed when the game ends.</p>
 `;
@@ -650,8 +650,12 @@ function selectCard(p, num) {
   if (state.playPhase !== 'selecting') return;
   if (state.currentTurnPlayer !== p) return;
 
-  state.selectedCard = num;
-  refreshBothAreas();
+  if (state.selectedCard === num) {
+    confirmPlay(p); // double-press: skip confirmation
+  } else {
+    state.selectedCard = num;
+    refreshBothAreas();
+  }
 }
 
 function confirmPlay(p) {
