@@ -17,7 +17,8 @@ All three rows consist of 9 slots, and no movement is needed within the row.
 The unplayed cards are first sorted in ascending order, then moved to the common play area upon player's choice one by one from left to right in the play area.
 The remaining cards don't move.
 Between the results margin and the unplayed cards is space for instructions.
-It is prevented from being too large by adding margins above the play area and below the unplayed cards.
+Extra space on the unused axis goes to margins above the play area and below the unplayed cards.
+The board scales uniformly to fit the displayed area.
 The numbers on the face and labels on the back of the cards are red or blue, depending on the player.
 The board and both the face and back of the cards are all white or black, depending on the theme.
 The cards' outline and other text should be of the opposite color.

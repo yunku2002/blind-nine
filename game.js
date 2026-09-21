@@ -12,7 +12,7 @@ const state = {
   currentRound: 0,          // 0-indexed
   firstPlayerThisRound: 0,  // 0 or 1
   currentTurnPlayer: 0,
-  playPhase: 'selecting',   // 'selecting' | 'waiting' | 'countdown' | 'showing-result'
+  playPhase: 'selecting',   // 'selecting' | 'countdown' | 'showing-result'
   selectedCard: null,
   roundPlays: [null, null],
   allRounds: [],
@@ -77,7 +77,6 @@ function buildDOM() {
 
 function buildPlayerArea(p) {
   const area = mk('div', `player-area p${p + 1}`);
-  area.id = `player-area-${p}`;
 
   // Top bar
   const topBar = mk('div', 'top-bar');
@@ -85,7 +84,6 @@ function buildPlayerArea(p) {
   // New Game button + confirm
   const newGameWrap = mk('div', 'top-bar-left');
   const btnNewGame = mk('button', 'icon-btn btn-newgame', 'New Game');
-  btnNewGame.id = `btn-newgame-${p}`;
   btnNewGame.addEventListener('click', () => promptNewGame(p));
   newGameWrap.appendChild(btnNewGame);
   topBar.appendChild(newGameWrap);
@@ -113,7 +111,6 @@ function buildPlayerArea(p) {
 
   // Score bar
   const scoreBar = mk('div', 'score-bar');
-  scoreBar.id = `score-bar-${p}`;
   scoreBar.innerHTML = `<span class="score-red"  id="score-red-${p}">Red: 0</span>
                         <span class="score-blue" id="score-blue-${p}">Blue: 0</span>`;
   // Spacer: absorbs extra space above the score
@@ -121,34 +118,16 @@ function buildPlayerArea(p) {
 
   area.appendChild(scoreBar);
 
-  // Opponent's played cards row (9 slots)
   const oppRow = mk('div', 'cards-row');
   oppRow.id = `opp-row-${p}`;
-  for (let i = 0; i < 9; i++) {
-    const slot = mk('div', 'card-slot');
-    slot.id = `opp-slot-${p}-${i}`;
-    oppRow.appendChild(slot);
-  }
   area.appendChild(oppRow);
 
-  // Player's own played cards row (9 slots)
   const myRow = mk('div', 'cards-row');
   myRow.id = `my-row-${p}`;
-  for (let i = 0; i < 9; i++) {
-    const slot = mk('div', 'card-slot');
-    slot.id = `my-slot-${p}-${i}`;
-    myRow.appendChild(slot);
-  }
   area.appendChild(myRow);
 
-  // Results row
   const resultsRow = mk('div', 'results-row');
   resultsRow.id = `results-row-${p}`;
-  for (let i = 0; i < 9; i++) {
-    const rSlot = mk('div', 'result-slot');
-    rSlot.id = `result-slot-${p}-${i}`;
-    resultsRow.appendChild(rSlot);
-  }
   area.appendChild(resultsRow);
 
   // Instructions area
@@ -197,10 +176,88 @@ function applyTheme() {
 
 function applySplitClass() {
   const app = el('app');
-  app.classList.remove('split-side-by-side', 'split-end-to-end');
-  app.classList.add(state.options.boardSplit === 'side-by-side'
-    ? 'split-side-by-side'
-    : 'split-end-to-end');
+  app.classList.toggle('split-end-to-end', state.options.boardSplit === 'end-to-end');
+  requestAnimationFrame(fitAllPlayerAreas);
+}
+
+// =====================================================
+// UNIFIED BOARD SCALE
+// One scale fills the player area (grows and shrinks).
+// Cards, instructions, scores, buttons, and option panels all use it.
+// Leftover on the unused axis still goes to the spacers / row centering.
+// =====================================================
+const CARD_W0 = 3.4;   // rem
+const CARD_H0 = 4.8;   // rem
+const GAP0    = 0.35;  // rem
+const INSTR0  = 5;     // rem
+const PAD_X0  = 1.2;   // 0.6 left + 0.6 right
+const PAD_Y0  = 1.2;   // 0.5 top + 0.7 bottom
+
+function fitPlayerArea(area) {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const boxW = area.clientWidth;
+  const boxH = area.clientHeight;
+  if (boxW <= 1 || boxH <= 1) return null;
+
+  const cur = parseFloat(getComputedStyle(area).getPropertyValue('--ui-scale')) || 1;
+  const cardW0  = CARD_W0 * rem;
+  const cardH0  = CARD_H0 * rem;
+  const gap0    = GAP0 * rem;
+  const instr0  = INSTR0 * rem;
+  const result0 = cardW0 * 0.44;
+  const padX0   = PAD_X0 * rem;
+  const padY0   = PAD_Y0 * rem;
+
+  let chromeAt1 = 0;
+  for (const child of area.children) {
+    if (child.classList.contains('player-overlay') || child.classList.contains('newgame-confirm')) continue;
+    if (child.classList.contains('area-spacer')) continue;
+    const s = getComputedStyle(child);
+    const mt = (parseFloat(s.marginTop) || 0) / cur;
+    const mb = (parseFloat(s.marginBottom) || 0) / cur;
+    if (child.classList.contains('cards-row') ||
+        child.classList.contains('hand-row') ||
+        child.classList.contains('results-row') ||
+        child.classList.contains('instructions-area')) {
+      chromeAt1 += mt + mb;
+      continue;
+    }
+    chromeAt1 += child.offsetHeight / cur + mt + mb;
+  }
+
+  const scaleW = boxW / (padX0 + 9 * cardW0 + 8 * gap0);
+  const scaleH = (boxH - 2) / (padY0 + chromeAt1 + 3 * cardH0 + instr0 + result0);
+  const scale  = Math.max(0.35, Math.min(scaleW, scaleH));
+
+  return {
+    scale,
+    gap:     (gap0 * scale) + 'px',
+    cardW:   (cardW0 * scale) + 'px',
+    cardH:   (cardH0 * scale) + 'px',
+    instrH:  (instr0 * scale) + 'px',
+  };
+}
+
+function fitAllPlayerAreas() {
+  const area = document.querySelector('.player-area');
+  const app = el('app');
+  if (!area || !app) return;
+  const fit = fitPlayerArea(area);
+  if (!fit) return;
+  app.style.setProperty('--ui-scale', String(fit.scale));
+  app.style.setProperty('--gap',     fit.gap);
+  app.style.setProperty('--card-w',  fit.cardW);
+  app.style.setProperty('--card-h',  fit.cardH);
+  app.style.setProperty('--instr-h', fit.instrH);
+}
+
+let _fitObserver = null;
+function initFitCards() {
+  if (_fitObserver) _fitObserver.disconnect();
+  _fitObserver = new ResizeObserver(fitAllPlayerAreas);
+  const area = document.querySelector('.player-area');
+  if (area) _fitObserver.observe(area);
+  fitAllPlayerAreas();
 }
 
 // =====================================================
@@ -215,12 +272,27 @@ function syncOptionsPanel(changedByPlayer) {
   }
 }
 
-function showOptions(p) {
+function openOverlay(p, kind) {
   const overlay = el(`player-overlay-${p}`);
   overlay.innerHTML = '';
   overlay.classList.remove('hidden');
-  state._overlayShowing[p] = 'options';
+  state._overlayShowing[p] = kind;
+  return overlay;
+}
 
+function closeOverlay(p) {
+  el(`player-overlay-${p}`).classList.add('hidden');
+  state._overlayShowing[p] = null;
+}
+
+function addPanelClose(panel, p) {
+  const closeBtn = mk('button', 'btn btn-panel-close', 'Close');
+  closeBtn.addEventListener('click', () => closeOverlay(p));
+  panel.appendChild(closeBtn);
+}
+
+function showOptions(p) {
+  const overlay = openOverlay(p, 'options');
   const panel = mk('div', 'player-panel');
   panel.innerHTML = `<h3>Options</h3>`;
 
@@ -238,7 +310,6 @@ function showOptions(p) {
     r.addEventListener('change', () => {
       state.options.theme = r.value;
       applyTheme();
-      refreshBothAreas();
       saveOptions();
       syncOptionsPanel(p);
     })
@@ -285,15 +356,7 @@ function showOptions(p) {
   }));
 
   panel.appendChild(form);
-
-  const closeBtn = mk('button', 'btn', 'Close');
-  closeBtn.style.marginTop = '0.8rem';
-  closeBtn.style.width = '100%';
-  closeBtn.addEventListener('click', () => {
-    overlay.classList.add('hidden');
-    state._overlayShowing[p] = null;
-  });
-  panel.appendChild(closeBtn);
+  addPanelClose(panel, p);
   overlay.appendChild(panel);
 }
 
@@ -309,26 +372,14 @@ function buildCheckbox(id, label, checked, onChange) {
 // RULES PANEL
 // =====================================================
 function showRules(p) {
-  const overlay = el(`player-overlay-${p}`);
-  overlay.innerHTML = '';
-  overlay.classList.remove('hidden');
-  state._overlayShowing[p] = 'rules';
-
+  const overlay = openOverlay(p, 'rules');
   const panel = mk('div', 'player-panel');
   panel.innerHTML = `<h3>Rules</h3>`;
 
   const rulesDiv = mk('div', 'rules-text');
   rulesDiv.innerHTML = RULES_HTML;
   panel.appendChild(rulesDiv);
-
-  const closeBtn = mk('button', 'btn', 'Close');
-  closeBtn.style.marginTop = '0.8rem';
-  closeBtn.style.width = '100%';
-  closeBtn.addEventListener('click', () => {
-    overlay.classList.add('hidden');
-    state._overlayShowing[p] = null;
-  });
-  panel.appendChild(closeBtn);
+  addPanelClose(panel, p);
   overlay.appendChild(panel);
 }
 
@@ -360,12 +411,10 @@ function startNewGame() {
   state._countdownTimer = null;
   state._resultTimer = null;
   state._countdownText = '';
-  state._overlayShowing = [null, null];
 
-  // Hide all overlays / confirms
   [0, 1].forEach(p => {
     el(`ng-confirm-${p}`).classList.add('hidden');
-    el(`player-overlay-${p}`).classList.add('hidden');
+    closeOverlay(p);
   });
 
   refreshBothAreas();
@@ -377,10 +426,7 @@ function startNewGame() {
 // =====================================================
 function showWhoGoesFirst() {
   [0, 1].forEach(p => {
-    const overlay = el(`player-overlay-${p}`);
-    overlay.innerHTML = '';
-    overlay.classList.remove('hidden');
-    state._overlayShowing[p] = 'whosfirst';
+    const overlay = openOverlay(p, 'whosfirst');
 
     const panel = mk('div', 'player-panel');
     panel.innerHTML = `<h3>Who goes first?</h3>`;
@@ -389,7 +435,7 @@ function showWhoGoesFirst() {
 
     const btnRed    = mk('button', 'btn btn-red',     'Red');
     const btnBlue   = mk('button', 'btn btn-blue',    'Blue');
-    const btnRandom = mk('button', 'btn btn-neutral', 'Random');
+    const btnRandom = mk('button', 'btn', 'Random');
 
     btnRed.addEventListener('click',    () => chooseFirst(0));
     btnBlue.addEventListener('click',   () => chooseFirst(1));
@@ -404,10 +450,7 @@ function showWhoGoesFirst() {
 }
 
 function chooseFirst(playerIndex) {
-  [0, 1].forEach(p => {
-    el(`player-overlay-${p}`).classList.add('hidden');
-    state._overlayShowing[p] = null;
-  });
+  [0, 1].forEach(p => closeOverlay(p));
   state.firstPlayerThisRound = playerIndex;
   state.currentTurnPlayer    = playerIndex;
   state.phase = 'playing';
@@ -447,86 +490,57 @@ function refreshBothAreas() {
 }
 
 function refreshPlayerArea(p) {
-  // Score bar
   el(`score-red-${p}`).textContent  = `Red: ${state.scores[0]}`;
   el(`score-blue-${p}`).textContent = `Blue: ${state.scores[1]}`;
 
-  // Opponent index from p's perspective
-  const opp = 1 - p;
+  fillPlayedRow(el(`opp-row-${p}`), p, 1 - p);
+  fillPlayedRow(el(`my-row-${p}`), p, p);
+  fillResultsRow(el(`results-row-${p}`), p);
+  renderInstructions(p);
+  renderHand(p);
+}
 
-  // --- Opponent's played cards row ---
-  const oppRow = el(`opp-row-${p}`);
-  oppRow.innerHTML = '';
+function playedNumber(owner, round) {
+  if (round < state.allRounds.length) return state.allRounds[round].plays[owner];
+  if (round === state.currentRound) return state.roundPlays[owner];
+  return null;
+}
+
+function fillPlayedRow(row, viewer, owner) {
+  row.innerHTML = '';
+  const faceUp = owner === viewer
+    ? (state.options.showMyPlayedCards || state.phase === 'gameover')
+    : state.phase === 'gameover';
   for (let round = 0; round < 9; round++) {
-    if (round < state.allRounds.length) {
-      // Card was played in a completed round
-      const roundData = state.allRounds[round];
-      const oppCard = roundData.plays[opp];
-      // Opponent's cards are face-down until game over
-      const faceUp = state.phase === 'gameover';
-      const card = makeCard(oppCard, opp, faceUp, false, false);
-      oppRow.appendChild(card);
-    } else if (round === state.currentRound && state.roundPlays[opp] !== null) {
-      // Opponent has played this round (current round in progress)
-      const faceUp = state.phase === 'gameover';
-      const card = makeCard(state.roundPlays[opp], opp, faceUp, false, false);
-      oppRow.appendChild(card);
-    } else {
-      oppRow.appendChild(mk('div', 'card-slot'));
-    }
+    const num = playedNumber(owner, round);
+    row.appendChild(num !== null
+      ? makeCard(num, owner, faceUp, false, false)
+      : mk('div', 'card-slot'));
   }
+}
 
-  // --- My played cards row ---
-  const myRow = el(`my-row-${p}`);
-  myRow.innerHTML = '';
-  for (let round = 0; round < 9; round++) {
-    if (round < state.allRounds.length) {
-      const roundData = state.allRounds[round];
-      const myCard = roundData.plays[p];
-      // Show face-up if option enabled or game over
-      const faceUp = state.options.showMyPlayedCards || state.phase === 'gameover';
-      const card = makeCard(myCard, p, faceUp, false, false);
-      myRow.appendChild(card);
-    } else if (round === state.currentRound && state.roundPlays[p] !== null) {
-      const faceUp = state.options.showMyPlayedCards || state.phase === 'gameover';
-      const card = makeCard(state.roundPlays[p], p, faceUp, false, false);
-      myRow.appendChild(card);
-    } else {
-      myRow.appendChild(mk('div', 'card-slot'));
-    }
-  }
+function roundOutcome(winner, p) {
+  if (winner === 'draw') return { cls: 'draw', txt: 'DRAW' };
+  if (winner === p) return { cls: 'win', txt: 'WIN' };
+  return { cls: 'lose', txt: 'LOSE' };
+}
 
-  // --- Results row ---
-  const resultsRow = el(`results-row-${p}`);
-  resultsRow.innerHTML = '';
+function fillResultsRow(row, p) {
+  row.innerHTML = '';
   for (let round = 0; round < 9; round++) {
     const slot = mk('div', 'result-slot');
     if (round < state.allRounds.length) {
       if (state.options.keepRoundResults) {
-        const w = state.allRounds[round].winner;
-        if (w === 'draw') {
-          slot.textContent = 'DRAW';
-          slot.classList.add('draw');
-        } else if (w === p) {
-          slot.textContent = 'WIN';
-          slot.classList.add('win');
-        } else {
-          slot.textContent = 'LOSE';
-          slot.classList.add('lose');
-        }
+        const { cls, txt } = roundOutcome(state.allRounds[round].winner, p);
+        slot.textContent = txt;
+        slot.classList.add(cls);
       } else {
         slot.textContent = 'Done';
-        slot.classList.add('draw'); // reuse gray colour
+        slot.classList.add('draw');
       }
     }
-    resultsRow.appendChild(slot);
+    row.appendChild(slot);
   }
-
-  // --- Instructions area ---
-  renderInstructions(p);
-
-  // --- Hand row ---
-  renderHand(p);
 }
 
 // =====================================================
@@ -568,11 +582,7 @@ function renderInstructions(p) {
     // Show round result
     const lastRound = state.allRounds[state.allRounds.length - 1];
     if (lastRound) {
-      const w = lastRound.winner;
-      let cls, txt;
-      if (w === 'draw') { cls = 'draw'; txt = 'DRAW'; }
-      else if (w === p) { cls = 'win';  txt = 'WIN';  }
-      else              { cls = 'lose'; txt = 'LOSE'; }
+      const { cls, txt } = roundOutcome(lastRound.winner, p);
       area.appendChild(mk('div', `instr-big ${cls}`, txt));
     }
     return;
@@ -705,11 +715,7 @@ function startCountdown() {
 
 function setCountdownText(text) {
   state._countdownText = text;
-  [0, 1].forEach(p => {
-    const area = el(`instr-area-${p}`);
-    area.innerHTML = '';
-    area.appendChild(mk('div', 'instr-big', text));
-  });
+  [0, 1].forEach(renderInstructions);
 }
 
 function resolveRound() {
@@ -777,6 +783,7 @@ function endGame() {
 function init() {
   loadOptions();
   buildDOM();
+  initFitCards();
   refreshBothAreas();
   showWhoGoesFirst();
 }
