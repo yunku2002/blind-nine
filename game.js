@@ -180,6 +180,24 @@ function applySplitClass() {
   requestAnimationFrame(fitAllPlayerAreas);
 }
 
+const portraitMq = window.matchMedia('(orientation: portrait)');
+let lastPortrait = null;
+
+function applyOrientationSplit(applyLayout) {
+  const portrait = portraitMq.matches;
+  if (lastPortrait === portrait) return;
+  lastPortrait = portrait;
+  const next = portrait ? 'end-to-end' : 'side-by-side';
+  if (state.options.boardSplit === next) return;
+  state.options.boardSplit = next;
+  saveOptions();
+  if (!applyLayout) return;
+  applySplitClass();
+  [0, 1].forEach(p => {
+    if (state._overlayShowing[p] === 'options') showOptions(p);
+  });
+}
+
 // =====================================================
 // UNIFIED BOARD SCALE
 // One scale fills the player area (grows and shrinks).
@@ -782,10 +800,14 @@ function endGame() {
 // =====================================================
 function init() {
   loadOptions();
+  applyOrientationSplit(false);
   buildDOM();
   initFitCards();
   refreshBothAreas();
   showWhoGoesFirst();
+  const onOrient = () => applyOrientationSplit(true);
+  if (portraitMq.addEventListener) portraitMq.addEventListener('change', onOrient);
+  else portraitMq.addListener(onOrient);
 }
 
 // Kick off
