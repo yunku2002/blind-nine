@@ -32,7 +32,7 @@ Any player can set the options, which are applied to both players mid-game.
 The settings should persist via local storage.
 There are five options and a Close button at the bottom.
 
-- Theme: Light (default) or Dark
+- Theme: Automatic (default), Light, or Dark
 - Board Split (radio): Side-by-Side (default) or End-to-End
 - 1 Beats 9 (checkbox, checked by default)
 - Show My Played Cards (checkbox, unchecked by default)

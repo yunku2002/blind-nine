@@ -18,7 +18,7 @@ const state = {
   allRounds: [],
   scores: [0, 0],
   options: {
-    theme: 'light',
+    theme: 'auto',
     boardSplit: 'side-by-side',
     oneBeatNine: true,
     showMyPlayedCards: false,
@@ -170,8 +170,17 @@ function loadOptions() {
 // =====================================================
 // THEME / LAYOUT
 // =====================================================
+const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
+
+function resolvedTheme() {
+  if (state.options.theme === 'dark' || state.options.theme === 'light') {
+    return state.options.theme;
+  }
+  return darkMq.matches ? 'dark' : 'light';
+}
+
 function applyTheme() {
-  document.documentElement.setAttribute('data-theme', state.options.theme);
+  document.documentElement.setAttribute('data-theme', resolvedTheme());
 }
 
 function applySplitClass() {
@@ -295,6 +304,9 @@ function openOverlay(p, kind) {
   overlay.innerHTML = '';
   overlay.classList.remove('hidden');
   state._overlayShowing[p] = kind;
+  overlay.onclick = (kind === 'whosfirst') ? null : (e) => {
+    if (e.target === overlay) closeOverlay(p);
+  };
   return overlay;
 }
 
@@ -320,8 +332,9 @@ function showOptions(p) {
   const themeRow = mk('div', 'option-row');
   themeRow.innerHTML = `<label>Theme</label>
     <div class="radio-group">
-      <label><input type="radio" name="opt-theme-${p}" value="light" ${state.options.theme === 'light' ? 'checked' : ''}> Light</label>
-      <label><input type="radio" name="opt-theme-${p}" value="dark"  ${state.options.theme === 'dark'  ? 'checked' : ''}> Dark</label>
+      <label><input type="radio" name="opt-theme-${p}" value="auto" ${state.options.theme !== 'light' && state.options.theme !== 'dark' ? 'checked' : ''}> Automatic</label>
+      <label><input type="radio" name="opt-theme-${p}" value="light"  ${state.options.theme === 'light'  ? 'checked' : ''}> Light</label>
+      <label><input type="radio" name="opt-theme-${p}" value="dark"   ${state.options.theme === 'dark'   ? 'checked' : ''}> Dark</label>
     </div>`;
   form.appendChild(themeRow);
   themeRow.querySelectorAll('input[type=radio]').forEach(r =>
@@ -808,6 +821,8 @@ function init() {
   const onOrient = () => applyOrientationSplit(true);
   if (portraitMq.addEventListener) portraitMq.addEventListener('change', onOrient);
   else portraitMq.addListener(onOrient);
+  if (darkMq.addEventListener) darkMq.addEventListener('change', applyTheme);
+  else darkMq.addListener(applyTheme);
 }
 
 // Kick off
